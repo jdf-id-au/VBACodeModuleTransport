@@ -70,6 +70,10 @@ Public Sub Import(wb As Workbook)
     Dim readline As String
     Dim readlines As String
     Dim line_count As Integer
+    Dim vbe_visibility As Boolean
+
+    vbe_visibility = Application.VBE.MainWindow.Visible
+    Application.VBE.MainWindow.Visible = False ' http://www.cpearson.com/excel/vbe.aspx
     With wb.VBProject
         For i = .VBComponents.Count To 1 Step -1
             Set c = .VBComponents(i)
@@ -103,13 +107,21 @@ SkipModule:
                     Loop
                     Close #1
                     On Error GoTo 0
-                    c.CodeModule.DeleteLines 1, c.CodeModule.CountOfLines ' FIXME is this adding a line with each cycle?
-                    c.CodeModule.InsertLines c.CodeModule.CountOfLines + 1, readlines ' c.CodeModule.CountOfLines should be 0
+                    ' FIXME Can't work out where extra newlines are coming from, so just removing them after the fact.
+                    ' Not a complete fix! Two problems?
+                    Do While Right(readlines, 1) = vbNewLine ' = vbCr on Mac
+                        readlines = Left(readlines, Len(readlines) - 1)
+                    Loop
+                    c.CodeModule.DeleteLines 1, c.CodeModule.CountOfLines
+                    c.CodeModule.InsertLines c.CodeModule.CountOfLines + 1, readlines ' c.CodeModule.CountOfLines is 0
 SkipClass:
                     On Error GoTo 0
             End Select
         Next i
     End With
+    If vbe_visibility Then
+        Application.VBE.MainWindow.Visible = True
+    End If
     Exit Sub
 ErrFileMissing:
     If Err.Number = 57 Or Err.Number = 53 Then ' Device I/O Error, File Not Found Error
